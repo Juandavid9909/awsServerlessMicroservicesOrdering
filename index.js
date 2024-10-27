@@ -4,13 +4,23 @@ const { PutItemCommand, QueryCommand, ScanCommand } = require("@aws-sdk/client-d
 const { ddbClient } = require("./ddbClient");
 
 exports.handler = async(event) => {
-    const eventType = event["detail-type"];
-
-    if (eventType !== undefined) {
-        return await eventBridgeInvocation(event);
+    if (event.Records != null) {
+        await sqsInvocation(event);
+    } else if (event["detail-type"] !== undefined) {
+        await eventBridgeInvocation(event);
+    } else {
+        await apiGatewayInvocation(event);
     }
+};
 
-    return await apiGatewayInvocation(event);
+const sqsInvocation = async(event) => {
+    event.Records.forEach(async(record) => {
+        console.log("Record %j", record);
+
+        const checkoutEventRequest = JSON.parse(record.body);
+
+        await createOrder(checkoutEventRequest.detail);
+    });
 };
 
 const eventBridgeInvocation = async(event) => {
